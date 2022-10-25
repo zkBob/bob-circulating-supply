@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  faucet:
+    image: ghcr.io/zkBob/bob-circulating-supply:${RELAYER_IMAGE:-latest}
+    container_name: circulating-supply
+    ports:
+      - $APP_PORT:$APP_PORT
+    restart: unless-stopped
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "100m"
+            max-file: "1"
