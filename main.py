@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 from fastapi.logger import logger as fastapi_logger
 
 from json import load, dump
@@ -82,7 +83,7 @@ def every(delay, task):
 app = FastAPI(docs_url=None, redoc_url=None)
 bg_task = threading.Thread(target=lambda: every(UPDATE_INTERVAL, totalSupplyUpdate))
 
-@app.get("/")
+@app.get("/", response_class=PlainTextResponse)
 async def root() -> float:
     return totalSupply
 
