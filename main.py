@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import logging
 import threading
 import time
+from decimal import Decimal
 
 FORMAT = "%(levelname)s:     %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -35,28 +36,40 @@ ABI = '''
 '''
 
 tokens = []
-decimals = {}
+decimals = False
 for u in RPCS:
     w3 = Web3(HTTPProvider(u))
     tokens.append(w3.eth.contract(abi = ABI, address = BOB_TOKEN))
 
-def getTotalSupply() -> float:
+def getTotalSupply() -> Decimal:
     global decimals
-    TS = 0.0
+    first_dec = 0
+    TS = 0
     for c in tokens:
         try:
             ep_uri = c.web3.provider.endpoint_uri
-            if not ep_uri in decimals:
-                d = int(c.functions.decimals().call())
-                decimals[ep_uri] = d
-            else: 
-                d = decimals[ep_uri]
-            local_TS = c.functions.totalSupply().call() / (10 ** d)
+            if not decimals:
+                dec = int(c.functions.decimals().call())
+                if first_dec == 0:
+                    first_dec = dec
+                    if first_dec != 18:
+                        errmsg = f'decimals as 18 on {ep_uri} expected'
+                        info(errmsg)
+                        raise BaseException(errmsg)
+                else:
+                    new_dec = dec
+                    if new_dec != first_dec:
+                        errmsg = f'decimals as 18 on {ep_uri} expected'
+                        info(errmsg)
+                        raise BaseException(errmsg)
+            local_TS = Web3.fromWei(c.functions.totalSupply().call(), 'ether')
             info(f'BOB totalSupply on {ep_uri} is {local_TS}')
             TS += local_TS
         except:
             info(f'Cannot get BOB totalSupply on {ep_uri}')
-            return -1.0
+            return Decimal(-1)
+    if first_dec:
+        decimals = True
     return TS
 
 totalSupply = 0
@@ -84,11 +97,14 @@ app = FastAPI(docs_url=None, redoc_url=None)
 bg_task = threading.Thread(target=lambda: every(UPDATE_INTERVAL, totalSupplyUpdate))
 
 @app.get("/", response_class=PlainTextResponse)
-async def root() -> float:
-    return totalSupply
+async def root() -> str:
+    if totalSupply == int(totalSupply):
+        return f'{str(totalSupply)}.0'
+    else:
+        return str(totalSupply)
 
 @app.get("/health")
-async def root() -> float:
+async def root() -> dict:
     return {"status": status, "currentDatetime": time.time(), "supplyRefreshInterval": UPDATE_INTERVAL}
 
 @app.on_event("startup")
