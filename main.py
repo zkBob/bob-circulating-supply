@@ -19,14 +19,14 @@ if not load_dotenv('./.env'):
     RPCS = getenv('RPCS', 'https://polygon-rpc.com,https://mainnet.optimism.io')
     BOB_TOKEN = getenv('BOB_TOKEN', '0xB0B195aEFA3650A6908f15CdaC7D92F8a5791B0B')
     UPDATE_INTERVAL = int(getenv('UPDATE_INTERVAL', 20))
-    APP_PORT = int(getenv('APP_PORT', 8080))
+    PORT = int(getenv('PORT', 8080))
 
 RPCS = RPCS.split(',')
 
 info(f'RPCS = {RPCS}')
 info(f'BOB_TOKEN = {BOB_TOKEN}')
 info(f'UPDATE_INTERVAL = {UPDATE_INTERVAL}')
-info(f'APP_PORT = {APP_PORT}')
+info(f'PORT = {PORT}')
 
 ABI = '''
 [{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},
@@ -108,4 +108,4 @@ async def startup_event():
 if __name__ == '__main__':
     info(f'Initializing BOB totalSupply')
     totalSupplyUpdate()
-    uvicorn.run(app, host="0.0.0.0", port=APP_PORT, proxy_headers=True)
+    uvicorn.run(app, host="0.0.0.0", port=PORT, proxy_headers=True)
