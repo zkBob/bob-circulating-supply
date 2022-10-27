@@ -43,6 +43,7 @@ for u in RPCS:
 
 def getTotalSupply() -> Decimal:
     global decimals
+
     first_dec = 0
     TS = 0
     for c in tokens:
@@ -72,18 +73,26 @@ def getTotalSupply() -> Decimal:
         decimals = True
     return TS
 
+lastSuccessTimestamp = 0
+lastErrorTimestamp = 0
 totalSupply = 0
 status = 'success'
 
 def totalSupplyUpdate():
     global totalSupply
+    global status
+    global lastSuccessTimestamp
+    global lastErrorTimestamp
+
     TS = getTotalSupply()
     if TS >= 0:
         totalSupply = TS
+        lastSuccessTimestamp = time.time()
         status = 'success'
     else:
+        lastErrorTimestamp = time.time()
         status = 'error'
-    info(f'BOB total supply is {totalSupply} in {time.time()}')
+    info(f'BOB total supply is {totalSupply} in {time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())}')
 
 # Taken from https://stackoverflow.com/questions/474528/what-is-the-best-way-to-repeatedly-execute-a-function-every-x-seconds/49801719#49801719
 def every(delay, task):
@@ -105,7 +114,15 @@ async def root() -> str:
 
 @app.get("/health")
 async def root() -> dict:
-    return {"status": status, "currentDatetime": time.time(), "supplyRefreshInterval": UPDATE_INTERVAL}
+    secondsSinceLastSuccess = int(time.time() - lastSuccessTimestamp)
+    secondsSinceLastError = int(time.time() - lastErrorTimestamp)
+    return {"status": status,
+            "currentDatetime": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            "lastSuccessDatetime": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(lastSuccessTimestamp)),
+            "secondsSinceLastSuccess": secondsSinceLastSuccess,
+            "lastErrorDatetime": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(lastErrorTimestamp)),
+            "secondsSinceLastError": secondsSinceLastError,
+            "supplyRefreshInterval": UPDATE_INTERVAL}
 
 @app.on_event("startup")
 async def startup_event():
