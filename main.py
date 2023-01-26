@@ -65,31 +65,31 @@ def getTotalSupply() -> Decimal:
 
     first_dec = 0
     TS = 0
-    # for c in tokens:
-    #     try:
-    #         ep_uri = c.web3.provider.endpoint_uri
-    #         if not decimals:
-    #             dec = int(c.functions.decimals().call())
-    #             if first_dec == 0:
-    #                 first_dec = dec
-    #                 if first_dec != 18:
-    #                     errmsg = f'decimals as 18 on {ep_uri} expected'
-    #                     error(errmsg)
-    #                     raise BaseException(errmsg)
-    #             else:
-    #                 new_dec = dec
-    #                 if new_dec != first_dec:
-    #                     errmsg = f'decimals on {ep_uri} do not match'
-    #                     error(errmsg)
-    #                     raise BaseException(errmsg)
-    #         local_TS = Web3.fromWei(c.functions.totalSupply().call(), 'ether')
-    #         info(f'BOB totalSupply on {ep_uri} is {local_TS}')
-    #         TS += local_TS
-    #     except:
-    #         info(f'Cannot get BOB totalSupply on {ep_uri}')
-    #         return Decimal(-1)
-    # if first_dec:
-    #     decimals = True
+    for c in tokens:
+        try:
+            ep_uri = c.web3.provider.endpoint_uri
+            if not decimals:
+                dec = int(c.functions.decimals().call())
+                if first_dec == 0:
+                    first_dec = dec
+                    if first_dec != 18:
+                        errmsg = f'decimals as 18 on {ep_uri} expected'
+                        error(errmsg)
+                        raise BaseException(errmsg)
+                else:
+                    new_dec = dec
+                    if new_dec != first_dec:
+                        errmsg = f'decimals on {ep_uri} do not match'
+                        error(errmsg)
+                        raise BaseException(errmsg)
+            local_TS = Web3.fromWei(c.functions.totalSupply().call(), 'ether')
+            info(f'BOB totalSupply on {ep_uri} is {local_TS}')
+            TS += local_TS
+        except:
+            info(f'Cannot get BOB totalSupply on {ep_uri}')
+            return Decimal(-1)
+    if first_dec:
+        decimals = True
     return TS
 
 lastSuccessTimestamp = 0
