@@ -395,14 +395,14 @@ async def bobvault_pairs() -> dict:
     empty_response = {
         KTIMESTAMP: int(ts_checkpoint),
         'current': {
-            'timestamp': ts_checkpoint,
+            'timestamp': int(ts_checkpoint - 23),
             'totalSupply': 17500250.946412587857161492,
             'collaterisedCirculatedSupply': 5131885.9515,
             'volumeUSD': 2956494.05,
             'holders': 2420
         },
         'previous': {
-            'timestamp': ts_checkpoint - 24 * 60 * 60,
+            'timestamp': int(ts_checkpoint - 23) - 24 * 60 * 60,
             'totalSupply': 17500250.946412587857161492,
             'collaterisedCirculatedSupply': 4861467.674,
             'volumeUSD': 2956494.05 - 55348.17,
