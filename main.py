@@ -31,6 +31,7 @@ PORT = int(getenv('PORT', 8080))
 UPLOAD_TOKEN = getenv('UPLOAD_TOKEN', 'default')
 SNAPSHOT_DIR = getenv('SNAPSHOT_DIR', '.')
 COINGECKO_SNAPSHOT_FILE = getenv('COINGECKO_SNAPSHOT_FILE', 'bobvault-polygon-coingecko-data.json')
+BOBSTAT_SNAPSHOT_FILE = getenv('BOBSTAT_SNAPSHOT_FILE', 'bobstat-data.json')
 
 RPCS = RPCS.split(',')
 
@@ -44,6 +45,7 @@ else:
     info(f'UPLOAD_TOKEN = {UPLOAD_TOKEN}')
 info(f'SNAPSHOT_DIR = {SNAPSHOT_DIR}')
 info(f'COINGECKO_SNAPSHOT_FILE = {COINGECKO_SNAPSHOT_FILE}')
+info(f'BOBSTAT_SNAPSHOT_FILE = {BOBSTAT_SNAPSHOT_FILE}')
 
 ABI = '''
 [{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},
@@ -97,6 +99,13 @@ lastErrorTimestamp = 0
 totalSupply = 0
 status = 'success'
 
+def format_timestamp(_ts = None):
+    if _ts == None:
+        gmt = time.gmtime()
+    else:
+        gmt = time.gmtime(_ts)
+    return time.strftime("%Y-%m-%d %H:%M:%S UTC", gmt)
+
 def totalSupplyUpdate():
     global totalSupply
     global status
@@ -113,7 +122,7 @@ def totalSupplyUpdate():
     else:
         lastErrorTimestamp = cur_time
         status = 'error'
-    info(f'BOB total supply is {totalSupply} in {time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())}')
+    info(f'BOB total supply is {totalSupply} in {format_timestamp()}')
 
 # Taken from https://stackoverflow.com/questions/474528/what-is-the-best-way-to-repeatedly-execute-a-function-every-x-seconds/49801719#49801719
 def every(delay, task):
@@ -126,24 +135,28 @@ def every(delay, task):
 def check_token(_token):
     return _token == UPLOAD_TOKEN
 
-def initialize_bobvault_healthdata(fname):
+def initialize_healthdata_from_snapshot(fname):
     health = {}
     health['lastSuccessTimestamp'] = 0
     health['lastErrorTimestamp'] = 0
     try:
         with open(fname, 'r') as json_file:
-            cg_data = load(json_file)
+            data = load(json_file)
         health['status'] = 'success'
-        health['dataTimestamp'] = cg_data['timestamp']
-        del cg_data
+        health['dataTimestamp'] = data['timestamp']
+        del data
     except IOError:
-        warning(f'No snapshot {COINGECKO_SNAPSHOT_FILE} found')
+        warning(f'No snapshot {fname} found')
         health['status'] = 'error'
     return health
 
 info(f'Checking for previous bobvault data')
 bobvaults_data_health = {}
-bobvaults_data_health['polygon'] = initialize_bobvault_healthdata(f'{SNAPSHOT_DIR}/{COINGECKO_SNAPSHOT_FILE}')
+bobvaults_data_health['polygon'] = initialize_healthdata_from_snapshot(f'{SNAPSHOT_DIR}/{COINGECKO_SNAPSHOT_FILE}')
+
+info(f'Checking for available bob statistics')
+bobstat_data_health = {}
+bobstat_data_health = initialize_healthdata_from_snapshot(f'{SNAPSHOT_DIR}/{BOBSTAT_SNAPSHOT_FILE}')
 
 app = FastAPI(docs_url=None, redoc_url=None)
 security = HTTPBearer()
@@ -162,28 +175,39 @@ async def health() -> dict:
     secondsSinceLastSuccess = cur_time - lastSuccessTimestamp
     secondsSinceLastError = cur_time - lastErrorTimestamp
     health_response = {"status": status,
-            "currentDatetime": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-            "lastSuccessDatetime": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(lastSuccessTimestamp)),
+            "currentDatetime": format_timestamp(),
+            "lastSuccessDatetime": format_timestamp(lastSuccessTimestamp),
             "secondsSinceLastSuccess": secondsSinceLastSuccess,
-            "lastErrorDatetime": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(lastErrorTimestamp)),
+            "lastErrorDatetime": format_timestamp(lastErrorTimestamp),
             "secondsSinceLastError": secondsSinceLastError,
             "supplyRefreshInterval": UPDATE_INTERVAL,
-            "BobVault": {}}
+            "BobVault": {},
+            "BobStat": {}
+        }
+    
+    health_response["BobStat"] = bobstat_data_health
+    health_response["BobStat"]['lastSuccessDatetime'] = format_timestamp(bobstat_data_health['lastSuccessTimestamp'])
+    health_response["BobStat"]['lastErrorDatetime'] = format_timestamp(bobstat_data_health['lastErrorTimestamp'])
+    health_response["BobStat"]['secondsSinceLastSuccess'] = cur_time - bobstat_data_health['lastSuccessTimestamp']
+    health_response["BobStat"]['secondsSinceLastError'] = cur_time -  bobstat_data_health['lastErrorTimestamp']
+    
     for chain in bobvaults_data_health:
         health_response["BobVault"][chain] = bobvaults_data_health[chain]
-        health_response["BobVault"][chain]['lastSuccessDatetime'] = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(bobvaults_data_health[chain]['lastSuccessTimestamp'])),
-        health_response["BobVault"][chain]['lastErrorDatetime'] = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(bobvaults_data_health[chain]['lastErrorTimestamp'])),
+        health_response["BobVault"][chain]['lastSuccessDatetime'] = format_timestamp(bobvaults_data_health[chain]['lastSuccessTimestamp'])
+        health_response["BobVault"][chain]['lastErrorDatetime'] = format_timestamp(bobvaults_data_health[chain]['lastErrorTimestamp'])
         health_response["BobVault"][chain]['secondsSinceLastSuccess'] = cur_time - bobvaults_data_health[chain]['lastSuccessTimestamp']
         health_response["BobVault"][chain]['secondsSinceLastError'] = cur_time -  bobvaults_data_health[chain]['lastErrorTimestamp']
+    
     return health_response
 
 @app.post("/coingecko/bobvault/polygon/upload")
 async def bobvault_upload(data: Request, credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
     global bobvaults_data_health
 
-    cur_time = int(time.time())
     if not check_token(credentials.credentials):
         return {"status": "Incorrect auth token"}
+
+    cur_time = int(time.time())
     try:
         cg_data = await data.json()
     except:
@@ -208,7 +232,7 @@ async def bobvault_upload(data: Request, credentials: HTTPAuthorizationCredentia
 
     delimiter = '/'
     info(f'New coingecko data stamped as {cg_data[KTIMESTAMP]} contains {delimiter.join(s)}' + 
-          f'in {time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())}')
+          f'in {format_timestamp()}')
     
     with open(f'{SNAPSHOT_DIR}/{COINGECKO_SNAPSHOT_FILE}', 'w') as json_file:
         dump(cg_data, json_file)
@@ -331,9 +355,77 @@ async def bobvault_historical_trades(
     info(f'Response prepared in {time.time() - ts_checkpoint}')
     return response
 
+@app.post("/bobstat/upload")
+async def bobstat_upload(data: Request, credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
+    global bobstat_data_health
+
+    if not check_token(credentials.credentials):
+        return {"status": "Incorrect auth token"}
+
+    cur_time = int(time.time())
+    try:
+        data = await data.json()
+    except:
+        bobstat_data_health['status'] = 'error'
+        bobstat_data_health['lastErrorTimestamp'] = cur_time
+        error('Incorrect data received')
+        return {"status": "Incorrect data"}
+
+    if not KTIMESTAMP in data:
+        bobstat_data_health['status'] = 'error'
+        bobstat_data_health['lastErrorTimestamp'] = cur_time
+        error(f'{KTIMESTAMP} missed in new bobstat data')
+        return {"status": "Incorrect data"}
+
+    info(f'New bobstat data stamped as {data[KTIMESTAMP]} received')
+    
+    with open(f'{SNAPSHOT_DIR}/{BOBSTAT_SNAPSHOT_FILE}', 'w') as json_file:
+        dump(data, json_file)
+
+    bobstat_data_health['status'] = 'success'
+    bobstat_data_health['dataTimestamp'] = data[KTIMESTAMP]
+    bobstat_data_health['lastSuccessTimestamp'] = cur_time
+
+    return {"status": "success"}
+
+@app.get("/bobstat")
+async def bobvault_pairs() -> dict:
+    ts_checkpoint = time.time()
+
+    empty_response = {
+        KTIMESTAMP: int(ts_checkpoint),
+        'current': {
+            'timestamp': ts_checkpoint,
+            'totalSupply': 17500250.946412587857161492,
+            'collaterisedCirculatedSupply': 5131885.9515,
+            'volumeUSD': 2956494.05,
+            'holders': 2420
+        },
+        'previous': {
+            'timestamp': ts_checkpoint - 24 * 60 * 60,
+            'totalSupply': 17500250.946412587857161492,
+            'collaterisedCirculatedSupply': 4861467.674,
+            'volumeUSD': 2956494.05 - 55348.17,
+            'holders': 2406
+        }
+    }
+
+    try:
+        with open(f'{SNAPSHOT_DIR}/{BOBSTAT_SNAPSHOT_FILE}', 'r') as json_file:
+            data = load(json_file)
+    except IOError:
+        warning(f'No snapshot {BOBSTAT_SNAPSHOT_FILE} found')
+        return empty_response
+
+    info(f'Response prepared in {time.time() - ts_checkpoint}')
+    return data
+
 @app.on_event("startup")
 async def startup_event():
     global info
+    global warning
+    global error
+
     local_logger=logging.getLogger()
     uvicorn_access_logger = logging.getLogger("uvicorn.error")
     fastapi_logger.handlers = uvicorn_access_logger.handlers
@@ -342,6 +434,8 @@ async def startup_event():
     local_logger.setLevel(log_level)
     fastapi_logger.setLevel(log_level)
     info=uvicorn_access_logger.info
+    warning=uvicorn_access_logger.warning
+    error=uvicorn_access_logger.error
 
     bg_task.daemon = True
     bg_task.start()
