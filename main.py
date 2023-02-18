@@ -3,6 +3,7 @@ from fastapi import FastAPI, Security, Request, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import PlainTextResponse
 from fastapi.logger import logger as fastapi_logger
+from fastapi.middleware.cors import CORSMiddleware
 
 from typing import Union
 
@@ -159,6 +160,12 @@ bobstat_data_health = {}
 bobstat_data_health = initialize_healthdata_from_snapshot(f'{SNAPSHOT_DIR}/{BOBSTAT_SNAPSHOT_FILE}')
 
 app = FastAPI(docs_url=None, redoc_url=None)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"]
+)
+
 security = HTTPBearer()
 bg_task = threading.Thread(target=lambda: every(UPDATE_INTERVAL, totalSupplyUpdate))
 
