@@ -15,6 +15,11 @@ RUN python -m pip cache purge
 
 WORKDIR /app
 
-COPY main.py .
+COPY app.py .
+COPY abi .
+COPY bobstats .
+COPY bobvault .
+COPY supply .
+COPY utils .
 
-CMD ["python", "main.py"]
+CMD ["python", "app.py"]
