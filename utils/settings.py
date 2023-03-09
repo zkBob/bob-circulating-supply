@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     update_interval: int = 3600
     port: int = 8080
     upload_token: str = __secrets__['upload_token']
-    abi_dir: str = '.'
+    abi_dir: str = 'abi/'
     snapshot_dir: str = '.'
     coingecko_snapshot_file_template: str = 'bobvault-{chain}-coingecko-data.json'
     bobstat_snapshot_file: str = 'bobstat-data.json'
-    bobvault_chains: List[str] = ['polygon']
+    bobvault_chains: List[str] = ['polygon', 'bsc', 'mainnet', 'eth-opt', 'arbitrum1']
     web3_retry_attemtps: int = 2
     web3_retry_delay: int = 5
 
