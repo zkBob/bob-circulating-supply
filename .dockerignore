@@ -5,3 +5,4 @@ docker-compose.yml
 README.md
 *.json
 .devcontainer
+**/*/__pycache__
