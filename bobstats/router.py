@@ -11,7 +11,7 @@ _security = HTTPBearer()
 
 router = APIRouter()
 
-@router.get("/", response_model=BobStatsDataForTwoPeriods)
+@router.get("/data", response_model=BobStatsDataForTwoPeriods)
 async def provide() -> BobStatsDataForTwoPeriods:
     return BobStats().load()
 
