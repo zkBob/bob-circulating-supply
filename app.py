@@ -4,7 +4,6 @@ from fastapi.responses import RedirectResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from os import getenv
 from utils.logging import LoggerProvider
 
 from bobstats.router import router as stats_router
