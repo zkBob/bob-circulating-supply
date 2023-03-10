@@ -71,5 +71,4 @@ class BobStats(Health):
         except:
             return empty_response
 
-        info(f'Response prepared in {time() - ts_checkpoint}')
         return data

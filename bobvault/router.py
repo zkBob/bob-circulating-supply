@@ -5,7 +5,7 @@ from .web import BobVaults
 from .misc import verify_chain
 from .models import BobVaultDataModel, ListOfPairsOut, ListOfTickersOut, OrderbookOut, PairTradesModel
 
-from utils.misc import check_auth_token, MINTIMESTAMP, MAXTIMESTAMP
+from utils.misc import check_auth_token, MINTIMESTAMP, MAXTIMESTAMP, execute_request_with_time_measurement
 from utils.logging import info, warning
 from utils.models import UploadResponse
 
@@ -22,7 +22,7 @@ async def upload(chain: str, data: BobVaultDataModel,
     if not verify_chain(chain):
         return UploadResponse(status="Incorrect chain")
 
-    BobVaults().store(chain, data)
+    execute_request_with_time_measurement(BobVaults().store, chain, data)
 
     return UploadResponse(status="success")
 
@@ -31,21 +31,21 @@ async def bobvault_pairs(chain: str) -> ListOfPairsOut:
     if not verify_chain(chain):
         return ListOfPairsOut()
 
-    return BobVaults().pairs(chain)
+    return execute_request_with_time_measurement(BobVaults().pairs, chain)
 
 @router.get("/{chain}/tickers", response_model = ListOfTickersOut)
 async def bobvault_tickers(chain: str) -> ListOfTickersOut:
     if not verify_chain(chain):
         return ListOfTickersOut()
 
-    return BobVaults().tickers(chain)
+    return execute_request_with_time_measurement(BobVaults().tickers, chain)
 
 @router.get("/{chain}/orderbook", response_model=OrderbookOut, response_model_exclude_unset=True)
 async def bobvault_orderbook(chain: str, ticker_id: str, depth: int = 0) -> OrderbookOut:
     if not verify_chain(chain):
         return OrderbookOut()
 
-    return BobVaults().orderbook(chain, ticker_id)
+    return execute_request_with_time_measurement(BobVaults().orderbook, chain, ticker_id)
 
 @router.get("/{chain}/historical_trades", response_model=PairTradesModel, response_model_exclude_none=True)
 async def bobvault_historical_trades(chain: str,
@@ -57,7 +57,15 @@ async def bobvault_historical_trades(chain: str,
     if not verify_chain(chain):
         return PairTradesModel()
 
-    return BobVaults().historical_trades(chain, ticker_id, type, limit, start_time, end_time)
+    return execute_request_with_time_measurement(
+        BobVaults().historical_trades,
+        chain,
+        ticker_id,
+        type,
+        limit,
+        start_time,
+        end_time
+    )
 
 @router.on_event("startup")
 async def startup_event():
