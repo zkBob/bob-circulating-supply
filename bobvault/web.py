@@ -11,7 +11,7 @@ from .models import BobVaultDataModel, ListOfPairsOut, PairOutDataModel, \
 from utils.logging import info, warning, error
 from utils.health import Health, HealthRegistry, WorkerHealthModelOut
 from utils.settings import Settings
-from utils.misc import CustomJSONEncoder, MINTIMESTAMP, MAXTIMESTAMP
+from utils.misc import CustomJSONEncoder, MINTIMESTAMP, MAXTIMESTAMP, Named
 
 _settings = Settings.get()
 
@@ -21,6 +21,7 @@ class BobVault(Health):
         self.filename = f'{_settings.snapshot_dir}/' + \
                         _settings.coingecko_snapshot_file_template.format(chain=chain)
         info(f'Checking for available bobvault data for {chain}')
+        self._name = f'{type(self).__name__}/{chain}'
         self.initialize_healthdata()
 
     def _dump(self, data: BobVaultDataModel):
@@ -137,7 +138,7 @@ class BobVault(Health):
             return PairTradesModel.parse_obj(response)
 
 @cache
-class BobVaults():
+class BobVaults(Named):
 
     def __init__(self):
         self.vaults = {}
@@ -148,7 +149,7 @@ class BobVaults():
 
     def healthdata_for_publishing(self, curtime: int) -> Dict[str, WorkerHealthModelOut]:
         ret = {}
-        info(f'Preparing {type(self).__name__} healthdata for publishing')
+        info(f'Preparing {self.name()} healthdata for publishing')
         for c in self.vaults:
             ret.update({
                 c: self.vaults[c].healthdata_for_publishing(curtime)

@@ -6,7 +6,7 @@ from time import time
 from pydantic import BaseModel, ValidationError
 
 from .models import TimestampedBaseModel
-from .misc import format_timestamp
+from .misc import format_timestamp, Named
 from .logging import warning, info
 
 class WorkerHealthModelBase(BaseModel):
@@ -28,11 +28,11 @@ class HealthOut(BaseModel):
 class HealthException(Exception):
     pass
 
-class Health():
+class Health(Named):
     healthdata: WorkerHealthModelBase
 
     def _load(self) -> TimestampedBaseModel:
-        warning(f'Considering {type(self).__name__} not healthy since no data found')
+        warning(f'Considering {self.name()} not healthy since no data found')
         raise HealthException
 
     def initialize_healthdata(self):
@@ -62,7 +62,7 @@ class Health():
         self.healthdata.lastErrorTimestamp = int(time())
 
     def healthdata_for_publishing(self, curtime: int) -> WorkerHealthModelOut:
-        info(f'Preparing {type(self).__name__} healthdata for publishing')
+        info(f'Preparing {self.name()} healthdata for publishing')
         hd = WorkerHealthModelOut.parse_obj(self.healthdata)
 
         hd.lastSuccessDatetime = format_timestamp(hd.lastSuccessTimestamp)
@@ -80,7 +80,7 @@ class HealthRegistry():
         self._items = []
 
     def append(self, item: Health) -> None:
-        info(f'Registering {type(item).__name__} for healthdata')
+        info(f'Registering {item.name()} for healthdata')
         self._items.append(item)
 
     def publish(self) -> HealthOut:
@@ -88,6 +88,6 @@ class HealthRegistry():
         retval = HealthOut(currentDatetime = format_timestamp(curtime), modules = {})
         for i in self._items:
             retval.modules.update({
-                type(i).__name__: i.healthdata_for_publishing(curtime)
+                i.name(): i.healthdata_for_publishing(curtime)
             })
         return retval

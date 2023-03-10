@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Any
 from decimal import Decimal
 
 from time import gmtime, strftime, sleep, time
@@ -8,6 +8,7 @@ from asyncio import sleep as asleep
 from starlette.concurrency import run_in_threadpool
 
 from .settings import Settings
+from .logging import info
 
 MINTIMESTAMP = 0
 MAXTIMESTAMP = (2**63) - 1
@@ -18,6 +19,14 @@ class CustomJSONEncoder(JSONEncoder):
             return str(obj)
         else:
             return super().default(obj)
+
+class Named():
+    def name(self):
+        try:
+            name = self._name
+        except:
+            name = type(self).__name__
+        return name
 
 def format_timestamp(ts: int = None) -> str:
     if ts == None:
@@ -56,4 +65,8 @@ async def async_every(task: Callable, delay: int) -> None:
         await run_in_threadpool(task)
         next_time += (time() - next_time) // delay * delay + delay
 
-
+def execute_request_with_time_measurement(func: Callable, *args, **kwargs) -> Any:
+    ts_checkpoint = time()
+    ret = func(*args, **kwargs)
+    info(f'Response prepared in {time() - ts_checkpoint}')
+    return ret
