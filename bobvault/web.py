@@ -55,6 +55,7 @@ class BobVault(Health):
         self.record_sucess(data_ts)
 
     def pairs(self) -> ListOfPairsOut:
+        info(f'Request to get pairs for {self.name()} received')
         ret = ListOfPairsOut()
         try:
             data=self._load()
@@ -72,6 +73,7 @@ class BobVault(Health):
         return ret
 
     def tickers(self) -> ListOfTickersOut:
+        info(f'Request to get tickers for {self.name()} received')
         ret = ListOfTickersOut()
         try:
             data=self._load()
@@ -88,6 +90,7 @@ class BobVault(Health):
         return ret
 
     def orderbook(self, ticker_id: str) -> OrderbookOut:
+        info(f'Request to get orderbook for {ticker_id} in {self.name()} received')
         try:
             data=self._load()
         except:
@@ -108,6 +111,7 @@ class BobVault(Health):
                                 limit: int,
                                 start_time: int, 
                                 end_time: int) -> PairTradesModel:
+        info(f'Request to get {type} trades for {ticker_id} in {self.name()} received')
         try:
             data=self._load()
         except:
