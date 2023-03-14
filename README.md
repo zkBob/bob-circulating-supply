@@ -39,7 +39,7 @@ docker compose logs -f
 Assuming that the app `my-heroku-app` is created on Heroku platform and Heroku CLI is installed on the local machine, the next steps can be executed to release the app:
 
 ```
-heroku container:login
+heroku login
 docker login --username=_ --password=$(heroku auth:token) registry.heroku.com
 docker tag ghcr.io/zkbob/bob-circulating-supply:main registry.heroku.com/my-heroku-app/web:latest
 docker push registry.heroku.com/my-heroku-app/web:latest
