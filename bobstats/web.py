@@ -68,6 +68,7 @@ class BobStats(Health):
 
         try:
             data = self._load()
+            data.timestamp=int(ts_checkpoint)
         except:
             return empty_response
 
